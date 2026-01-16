@@ -10,7 +10,7 @@ import (
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
-		http.NotFound(w, r)
+		app.notfound(w)
 		return
 	}
 	files := []string{
@@ -20,7 +20,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	}
 	ts, err := template.ParseFiles(files...)
 	if err != nil {
-		app.errorlog.Println(err.Error())
+		app.serverError(w, err)
 		log.Println(err.Error())
 		http.Error(w, "Internal error", 500)
 		return
@@ -28,7 +28,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 	err = ts.ExecuteTemplate(w, "base", nil)
 	if err != nil {
-		app.errorlog.Println(err.Error())
+		app.serverError(w, err)
 		log.Println(err.Error())
 		http.Error(w, "Internal error", 500)
 		return
@@ -38,7 +38,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 func (app *application) showSnippet(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil || id < 1 {
-		http.NotFound(w, r)
+		app.notfound(w)
 		return
 	}
 	fmt.Fprintf(w, "Display a specific snippet with ID %d...", id)
@@ -49,5 +49,16 @@ func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method Not Allowed", 405)
 		return
 	}
-	w.Write([]byte("Create a new snippet..."))
+
+	title := "o snail"
+	content := "o snail run away \n slowly slowly"
+	expires := "21"
+
+	id, err := app.snippets.INSERT(title, content, expires)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/snippet?id=%d", id), http.StatusSeeOther)
 }
